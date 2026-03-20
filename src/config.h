@@ -60,11 +60,7 @@
 // ---------------------------------------------------------------------------
 // Focus screen configuration
 // ---------------------------------------------------------------------------
-#define FOCUS_WORD         "Build."
-#define FOCUS_EVENT_NAME   "Next holiday"
-#define FOCUS_EVENT_YEAR   2026
-#define FOCUS_EVENT_MONTH  4   // April
-#define FOCUS_EVENT_DAY    27
+#define FOCUS_WORD  "Build."
 
 // ---------------------------------------------------------------------------
 // Prayer times configuration

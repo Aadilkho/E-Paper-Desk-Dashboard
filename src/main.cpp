@@ -1029,7 +1029,7 @@ void drawHeaderClock(bool clockValid) {
   struct tm timeinfo; localtime_r(&now, &timeinfo);
   strftime(timeBuf, sizeof(timeBuf), "%H:%M", &timeinfo);
   display.setFont(&FreeMono9pt7b);
-  display.setCursor(248, 14);
+  display.setCursor(228, 14);
   display.print(timeBuf);
 }
 
@@ -1287,31 +1287,15 @@ void drawFocusScreen(bool clockValid, const WeatherData &weather) {
   display.setRotation(1);
   display.setFullWindow();
 
-  char weekBuf[16]  = "";
-  char timeBuf[8]   = "--:--";
-  char dateBuf[24]  = "";
-  long daysUntil    = -1;
+  char weekBuf[16] = "";
+  char dateBuf[24] = "";
 
   if (clockValid) {
     time_t now; time(&now);
     struct tm timeinfo; localtime_r(&now, &timeinfo);
-    strftime(timeBuf,  sizeof(timeBuf),  "%H:%M",  &timeinfo);
-    strftime(dateBuf,  sizeof(dateBuf),  "%a %b %d", &timeinfo);
-
-    // ISO week number
+    strftime(dateBuf, sizeof(dateBuf), "%a %b %d", &timeinfo);
     char wBuf[4]; strftime(wBuf, sizeof(wBuf), "%V", &timeinfo);
     snprintf(weekBuf, sizeof(weekBuf), "Wk %s", wBuf);
-
-    // Days until configured event
-    struct tm eventTm = {};
-    eventTm.tm_year = FOCUS_EVENT_YEAR - 1900;
-    eventTm.tm_mon  = FOCUS_EVENT_MONTH - 1;
-    eventTm.tm_mday = FOCUS_EVENT_DAY;
-    eventTm.tm_isdst = -1;
-    time_t eventEpoch = mktime(&eventTm);
-    if (eventEpoch > now) {
-      daysUntil = (long)((eventEpoch - now) / 86400L);
-    }
   }
 
   display.firstPage();
@@ -1328,23 +1312,15 @@ void drawFocusScreen(bool clockValid, const WeatherData &weather) {
       int16_t x1, y1; uint16_t w, h;
       display.getTextBounds(FOCUS_WORD, 0, 0, &x1, &y1, &w, &h);
       int16_t cx = (296 - (int16_t)w) / 2;
-      display.setCursor(cx < 0 ? 0 : cx, 72);
+      display.setCursor(cx < 0 ? 0 : cx, 75);
     }
     display.print(FOCUS_WORD);
 
     display.setFont(&FreeMono9pt7b);
-    display.setCursor(8, 96);
+    display.setCursor(8, 104);
     display.print(weekBuf);
     display.print("  ");
     display.print(dateBuf);
-
-    if (daysUntil >= 0) {
-      display.setCursor(8, 112);
-      char evBuf[64];
-      snprintf(evBuf, sizeof(evBuf), "%s: %ld day%s",
-               FOCUS_EVENT_NAME, daysUntil, daysUntil == 1 ? "" : "s");
-      display.print(evBuf);
-    }
   } while (display.nextPage());
 }
 

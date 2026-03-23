@@ -98,7 +98,7 @@
 // ---------------------------------------------------------------------------
 #define OTA_REPO_OWNER  "Aadilkho"
 #define OTA_REPO_NAME   "E-Paper-Desk-Dashboard"
-#define OTA_BRANCH      "claude/review-eink-display-NGH33"
+#define OTA_BRANCH      "main"
 
 // Minimum seconds between OTA checks (prevents hammering on rapid restarts)
 #define OTA_CHECK_COOLDOWN_SEC 600

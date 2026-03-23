@@ -1,0 +1,85 @@
+name: Build and Release Firmware
+
+on:
+  push:
+    branches:
+      - claude/review-eink-display-NGH33
+      - main
+    # Don't trigger on the version.json-only commit that this workflow itself creates
+    paths-ignore:
+      - 'version.json'
+      - 'PLAN.md'
+      - '**.md'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # needed to create releases and push version.json
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Use a PAT if you need to push back to a protected branch.
+          # For unprotected branches the default GITHUB_TOKEN is sufficient.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Get short commit SHA (12 chars)
+        id: sha
+        run: echo "sha=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-
+
+      - name: Build firmware
+        env:
+          GIT_SHA: ${{ steps.sha.outputs.sha }}
+        run: platformio run
+
+      - name: Create or update GitHub Release with firmware binary
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: firmware-latest
+          name: "Latest Firmware"
+          body: |
+            Auto-built from commit `${{ steps.sha.outputs.sha }}` on branch `${{ github.ref_name }}`.
+
+            The device will download this binary automatically on its next OTA check.
+          files: .pio/build/esp32-s3-devkitm-1/firmware.bin
+          make_latest: true
+          # Overwrite existing assets so there is always exactly one "firmware-latest"
+          fail_on_unmatched_files: true
+
+      - name: Write version.json
+        run: |
+          cat > version.json << 'EOF'
+          {
+            "sha": "${{ steps.sha.outputs.sha }}",
+            "url": "https://github.com/${{ github.repository }}/releases/download/firmware-latest/firmware.bin"
+          }
+          EOF
+
+      - name: Commit and push version.json
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add version.json
+          # Only commit if something actually changed; [skip ci] prevents a build loop
+          git diff --staged --quiet || \
+            git commit -m "chore: update version.json to ${{ steps.sha.outputs.sha }} [skip ci]" && \
+            git push origin HEAD:${{ github.ref_name }}

@@ -1036,11 +1036,11 @@ void drawWeatherIconAt(int16_t x, int16_t y, const WeatherData &weather) {
 // Positioned so time "HH:MM" fits at x=228 and icon cluster left of that
 void drawWeatherCorner(const WeatherData &w) {
   if (!w.valid) return;
-  // Draw temperature text above the icon area, to the left of HH:MM
+  // Temperature sits right after the time (HH:MM = ~60px from X=4, so start at X=70)
   char buf[12];
   snprintf(buf, sizeof(buf), "%.0fC", w.temperatureC);
   display.setFont(&FreeMono9pt7b);
-  display.setCursor(174, 14); // left of the header icon zone
+  display.setCursor(70, 14);
   display.print(buf);
 }
 
@@ -1060,12 +1060,14 @@ void drawMarketIcon() {
 void drawHeaderBase(const char *title) {
   display.setFont(&FreeMono9pt7b);
   display.setTextColor(GxEPD_BLACK);
-  display.setCursor(4, 14);
+  // Title starts at X=112 to leave room for time+temp on the left
+  display.setCursor(112, 14);
   display.print(title);
   display.drawLine(0, 18, 295, 18, GxEPD_BLACK);
 }
 
 // Draws only the HH:MM clock in the header row (call after drawHeaderBase)
+// Time is now on the far left (X=4)
 void drawHeaderClock(bool clockValid) {
   if (!clockValid) return;
   char timeBuf[8];
@@ -1073,7 +1075,7 @@ void drawHeaderClock(bool clockValid) {
   struct tm timeinfo; localtime_r(&now, &timeinfo);
   strftime(timeBuf, sizeof(timeBuf), "%H:%M", &timeinfo);
   display.setFont(&FreeMono9pt7b);
-  display.setCursor(228, 14);
+  display.setCursor(4, 14);
   display.print(timeBuf);
 }
 

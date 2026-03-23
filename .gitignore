@@ -4,3 +4,4 @@
 .vscode/launch.json
 .vscode/ipch
 src/config_private.h
+src/firmware_version.h

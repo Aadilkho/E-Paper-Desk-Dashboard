@@ -80,3 +80,25 @@
 // ---------------------------------------------------------------------------
 #define NEWS_SOURCE      "hackernews"
 #define NEWS_SUBREDDIT   "worldnews"
+
+// ---------------------------------------------------------------------------
+// OTA firmware update configuration
+//
+// The device checks raw.githubusercontent.com/{OWNER}/{REPO}/{BRANCH}/version.json
+// on cold boot and when midnight is crossed.  If the SHA in that file differs
+// from the SHA embedded in the running firmware at build time, the binary at
+// the URL inside version.json is downloaded and flashed automatically.
+//
+// For PRIVATE repositories: define OTA_GITHUB_TOKEN in config_private.h
+// (never commit a real token here).  A fine-grained PAT with read-only
+// access to "Contents" and "Releases" is sufficient.
+//   #define OTA_GITHUB_TOKEN "github_pat_..."
+//
+// Change OTA_BRANCH to "main" after merging.
+// ---------------------------------------------------------------------------
+#define OTA_REPO_OWNER  "Aadilkho"
+#define OTA_REPO_NAME   "E-Paper-Desk-Dashboard"
+#define OTA_BRANCH      "claude/review-eink-display-NGH33"
+
+// Minimum seconds between OTA checks (prevents hammering on rapid restarts)
+#define OTA_CHECK_COOLDOWN_SEC 600

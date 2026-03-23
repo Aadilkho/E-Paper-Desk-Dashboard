@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
+#include <Preferences.h>
 #include <SPI.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -277,15 +278,52 @@ const char *wakeupCauseStr(esp_sleep_wakeup_cause_t cause) {
   }
 }
 
+// Persist WiFi credentials to NVS so OTA-updated firmware (which has no
+// compiled-in credentials) can still connect on subsequent boots.
+static void saveWiFiCredsToNVS(const char* ssid, const char* password) {
+  Preferences prefs;
+  prefs.begin("wifi", false);
+  prefs.putString("ssid", ssid);
+  prefs.putString("pass", password);
+  prefs.end();
+}
+
+static bool loadWiFiCredsFromNVS(String& ssid, String& password) {
+  Preferences prefs;
+  prefs.begin("wifi", true);
+  ssid     = prefs.getString("ssid", "");
+  password = prefs.getString("pass", "");
+  prefs.end();
+  return ssid.length() > 0;
+}
+
 bool connectWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     logf("Wi-Fi already connected. IP=%s RSSI=%d dBm",
          WiFi.localIP().toString().c_str(), WiFi.RSSI());
     return true;
   }
-  logf("Wi-Fi connect start. SSID='%s'", WIFI_SSID);
+
+  // Determine which credentials to use.
+  // If compiled-in creds are real, use them and persist to NVS for future
+  // OTA-updated firmware that won't have creds compiled in.
+  String ssid, password;
+  const bool compiledCreds = (strcmp(WIFI_SSID, "YOUR_WIFI_SSID") != 0);
+  if (compiledCreds) {
+    ssid     = WIFI_SSID;
+    password = WIFI_PASSWORD;
+    saveWiFiCredsToNVS(WIFI_SSID, WIFI_PASSWORD);
+    logf("Wi-Fi: using compiled-in creds, saved to NVS. SSID='%s'", ssid.c_str());
+  } else if (loadWiFiCredsFromNVS(ssid, password)) {
+    logf("Wi-Fi: using NVS creds. SSID='%s'", ssid.c_str());
+  } else {
+    logf("Wi-Fi: no credentials available (no compiled-in, no NVS). Skipping.");
+    return false;
+  }
+
+  logf("Wi-Fi connect start. SSID='%s'", ssid.c_str());
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.begin(ssid.c_str(), password.c_str());
 
   const uint32_t started = millis();
   uint32_t lastLogMs = 0;

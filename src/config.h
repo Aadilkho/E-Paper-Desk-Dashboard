@@ -43,7 +43,6 @@
 #define ENABLE_WEATHER_SCREEN   true
 #define ENABLE_MARKET_SCREEN    true
 #define ENABLE_THOUGHTS_SCREEN  true
-#define ENABLE_FOCUS_SCREEN     true
 #define ENABLE_PRAYER_SCREEN    true
 #define ENABLE_NEWS_SCREEN      true
 
@@ -53,14 +52,8 @@
 #define WEATHER_SCREEN_INTERVAL_SEC   60
 #define MARKET_SCREEN_INTERVAL_SEC   120
 #define THOUGHTS_SCREEN_INTERVAL_SEC 300
-#define FOCUS_SCREEN_INTERVAL_SEC     60
 #define PRAYER_SCREEN_INTERVAL_SEC   300
 #define NEWS_SCREEN_INTERVAL_SEC     180
-
-// ---------------------------------------------------------------------------
-// Focus screen configuration
-// ---------------------------------------------------------------------------
-#define FOCUS_WORD  "Build."
 
 // ---------------------------------------------------------------------------
 // Prayer times configuration

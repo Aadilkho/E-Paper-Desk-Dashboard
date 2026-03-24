@@ -73,7 +73,6 @@ static time_t MIN_VALID_EPOCH = 1741000000L;
 static constexpr uint8_t SCREEN_WEATHER = 0;
 static constexpr uint8_t SCREEN_MARKET  = 1;
 static constexpr uint8_t SCREEN_THOUGHT = 2;
-static constexpr uint8_t SCREEN_FOCUS   = 3;
 static constexpr uint8_t SCREEN_PRAYER  = 4;
 static constexpr uint8_t SCREEN_NEWS    = 5;
 static constexpr uint8_t MAX_SCREENS    = 6;
@@ -235,7 +234,6 @@ void buildScreenList() {
   if (ENABLE_WEATHER_SCREEN)  screenList[screenCount++] = SCREEN_WEATHER;
   if (ENABLE_MARKET_SCREEN)   screenList[screenCount++] = SCREEN_MARKET;
   if (ENABLE_THOUGHTS_SCREEN) screenList[screenCount++] = SCREEN_THOUGHT;
-  if (ENABLE_FOCUS_SCREEN)    screenList[screenCount++] = SCREEN_FOCUS;
   if (ENABLE_PRAYER_SCREEN)   screenList[screenCount++] = SCREEN_PRAYER;
   if (ENABLE_NEWS_SCREEN)     screenList[screenCount++] = SCREEN_NEWS;
   if (screenCount == 0) {
@@ -253,7 +251,6 @@ uint32_t getIntervalForScreen(uint8_t screenId) {
     case SCREEN_WEATHER: return WEATHER_SCREEN_INTERVAL_SEC;
     case SCREEN_MARKET:  return MARKET_SCREEN_INTERVAL_SEC;
     case SCREEN_THOUGHT: return THOUGHTS_SCREEN_INTERVAL_SEC;
-    case SCREEN_FOCUS:   return FOCUS_SCREEN_INTERVAL_SEC;
     case SCREEN_PRAYER:  return PRAYER_SCREEN_INTERVAL_SEC;
     case SCREEN_NEWS:    return NEWS_SCREEN_INTERVAL_SEC;
     default:             return WEATHER_SCREEN_INTERVAL_SEC;
@@ -1325,52 +1322,6 @@ void drawThoughtScreen(const ThoughtData &thought, bool clockValid,
 }
 
 // ---------------------------------------------------------------------------
-// Screen: Focus
-// ---------------------------------------------------------------------------
-
-void drawFocusScreen(bool clockValid, const WeatherData &weather) {
-  logf("Render focus screen. clockValid=%d", clockValid);
-  display.setRotation(1);
-  display.setFullWindow();
-
-  char weekBuf[16] = "";
-  char dateBuf[24] = "";
-
-  if (clockValid) {
-    time_t now; time(&now);
-    struct tm timeinfo; localtime_r(&now, &timeinfo);
-    strftime(dateBuf, sizeof(dateBuf), "%a %b %d", &timeinfo);
-    char wBuf[4]; strftime(wBuf, sizeof(wBuf), "%V", &timeinfo);
-    snprintf(weekBuf, sizeof(weekBuf), "Wk %s", wBuf);
-  }
-
-  display.firstPage();
-  do {
-    display.fillScreen(GxEPD_WHITE);
-    drawHeaderBase("Focus");
-    display.setFont(&FreeMono9pt7b);
-    drawHeaderClock(clockValid);
-    drawWeatherCorner(weather);
-
-    // Large focus word centered
-    display.setFont(&FreeMonoBold18pt7b);
-    {
-      int16_t x1, y1; uint16_t w, h;
-      display.getTextBounds(FOCUS_WORD, 0, 0, &x1, &y1, &w, &h);
-      int16_t cx = (296 - (int16_t)w) / 2;
-      display.setCursor(cx < 0 ? 0 : cx, 75);
-    }
-    display.print(FOCUS_WORD);
-
-    display.setFont(&FreeMono9pt7b);
-    display.setCursor(8, 104);
-    display.print(weekBuf);
-    display.print("  ");
-    display.print(dateBuf);
-  } while (display.nextPage());
-}
-
-// ---------------------------------------------------------------------------
 // Screen: Prayer times
 // ---------------------------------------------------------------------------
 
@@ -1788,9 +1739,6 @@ void runDashboardCycle(uint8_t screenId) {
       break;
     case SCREEN_THOUGHT:
       drawThoughtScreen(thought, clockValid, wifiConnected, cornerWeather);
-      break;
-    case SCREEN_FOCUS:
-      drawFocusScreen(clockValid, cornerWeather);
       break;
     case SCREEN_PRAYER:
       drawPrayerScreen(prayer, clockValid, wifiConnected, cornerWeather);

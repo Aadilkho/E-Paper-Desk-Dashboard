@@ -83,8 +83,8 @@
 #define ENABLE_POMODORO_SCREEN            true
 #define POMODORO_SCREEN_INTERVAL_SEC      60
 #define POMODORO_START_HOUR               9    // 09:00 — when the work day begins
-#define POMODORO_WORK_MINUTES             25
-#define POMODORO_SHORT_BREAK_MINUTES      5
+#define POMODORO_WORK_MINUTES             45
+#define POMODORO_SHORT_BREAK_MINUTES      10
 #define POMODORO_LONG_BREAK_MINUTES       30
 #define POMODORO_CYCLES_BEFORE_LONG_BREAK 4
 

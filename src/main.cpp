@@ -70,12 +70,13 @@ static time_t buildDateEpoch() {
 static time_t MIN_VALID_EPOCH = 1741000000L;
 
 // Screen IDs
-static constexpr uint8_t SCREEN_WEATHER = 0;
-static constexpr uint8_t SCREEN_MARKET  = 1;
-static constexpr uint8_t SCREEN_THOUGHT = 2;
-static constexpr uint8_t SCREEN_PRAYER  = 4;
-static constexpr uint8_t SCREEN_NEWS    = 5;
-static constexpr uint8_t MAX_SCREENS    = 6;
+static constexpr uint8_t SCREEN_WEATHER  = 0;
+static constexpr uint8_t SCREEN_MARKET   = 1;
+static constexpr uint8_t SCREEN_THOUGHT  = 2;
+static constexpr uint8_t SCREEN_POMODORO = 3;
+static constexpr uint8_t SCREEN_PRAYER   = 4;
+static constexpr uint8_t SCREEN_NEWS     = 5;
+static constexpr uint8_t MAX_SCREENS     = 6;
 
 GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT> display(
     GxEPD2_290_T94_V2(EPD_CS, EPD_DC, EPD_RST, EPD_BUSY));
@@ -231,11 +232,12 @@ void initRgbLed() {
 
 void buildScreenList() {
   screenCount = 0;
-  if (ENABLE_WEATHER_SCREEN)  screenList[screenCount++] = SCREEN_WEATHER;
-  if (ENABLE_MARKET_SCREEN)   screenList[screenCount++] = SCREEN_MARKET;
-  if (ENABLE_THOUGHTS_SCREEN) screenList[screenCount++] = SCREEN_THOUGHT;
-  if (ENABLE_PRAYER_SCREEN)   screenList[screenCount++] = SCREEN_PRAYER;
-  if (ENABLE_NEWS_SCREEN)     screenList[screenCount++] = SCREEN_NEWS;
+  if (ENABLE_WEATHER_SCREEN)   screenList[screenCount++] = SCREEN_WEATHER;
+  if (ENABLE_MARKET_SCREEN)    screenList[screenCount++] = SCREEN_MARKET;
+  if (ENABLE_THOUGHTS_SCREEN)  screenList[screenCount++] = SCREEN_THOUGHT;
+  if (ENABLE_POMODORO_SCREEN)  screenList[screenCount++] = SCREEN_POMODORO;
+  if (ENABLE_PRAYER_SCREEN)    screenList[screenCount++] = SCREEN_PRAYER;
+  if (ENABLE_NEWS_SCREEN)      screenList[screenCount++] = SCREEN_NEWS;
   if (screenCount == 0) {
     // Fallback: always show weather
     screenList[screenCount++] = SCREEN_WEATHER;
@@ -248,12 +250,13 @@ void buildScreenList() {
 
 uint32_t getIntervalForScreen(uint8_t screenId) {
   switch (screenId) {
-    case SCREEN_WEATHER: return WEATHER_SCREEN_INTERVAL_SEC;
-    case SCREEN_MARKET:  return MARKET_SCREEN_INTERVAL_SEC;
-    case SCREEN_THOUGHT: return THOUGHTS_SCREEN_INTERVAL_SEC;
-    case SCREEN_PRAYER:  return PRAYER_SCREEN_INTERVAL_SEC;
-    case SCREEN_NEWS:    return NEWS_SCREEN_INTERVAL_SEC;
-    default:             return WEATHER_SCREEN_INTERVAL_SEC;
+    case SCREEN_WEATHER:  return WEATHER_SCREEN_INTERVAL_SEC;
+    case SCREEN_MARKET:   return MARKET_SCREEN_INTERVAL_SEC;
+    case SCREEN_THOUGHT:  return THOUGHTS_SCREEN_INTERVAL_SEC;
+    case SCREEN_POMODORO: return POMODORO_SCREEN_INTERVAL_SEC;
+    case SCREEN_PRAYER:   return PRAYER_SCREEN_INTERVAL_SEC;
+    case SCREEN_NEWS:     return NEWS_SCREEN_INTERVAL_SEC;
+    default:              return WEATHER_SCREEN_INTERVAL_SEC;
   }
 }
 
@@ -1435,6 +1438,172 @@ void drawNewsScreen(const NewsData &news, bool clockValid,
 }
 
 // ---------------------------------------------------------------------------
+// Screen: Pomodoro timer
+// ---------------------------------------------------------------------------
+
+struct PomodoroState {
+  bool isWork;      // true = focus block, false = break
+  bool isLongBreak; // true = long break at end of round
+  int  cycleNum;    // 1-based: which focus cycle we're in (or just completed for a break)
+  int  remainSec;   // seconds remaining in the current phase
+  int  phaseDurSec; // total duration of this phase (seconds)
+};
+
+// Computes which Pomodoro phase we're in based purely on the wall clock.
+// A "round" starting at POMODORO_START_HOUR each day cycles indefinitely:
+//   [Work 25m] [Short 5m] [Work 25m] [Short 5m] ... [Work 25m] [Long 30m]
+// and then repeats from the first work block.
+static PomodoroState computePomodoroState() {
+  PomodoroState s = {true, false, 1,
+                     POMODORO_WORK_MINUTES * 60, POMODORO_WORK_MINUTES * 60};
+
+  time_t now; time(&now);
+  struct tm tm_now; localtime_r(&now, &tm_now);
+
+  const int startSec   = POMODORO_START_HOUR * 3600;
+  const int currentSec = tm_now.tm_hour * 3600 + tm_now.tm_min * 60 + tm_now.tm_sec;
+  int elapsedSec = currentSec - startSec;
+  if (elapsedSec < 0) elapsedSec = 0; // before start hour → first block, full duration
+
+  const int work   = POMODORO_WORK_MINUTES * 60;
+  const int shortB = POMODORO_SHORT_BREAK_MINUTES * 60;
+  const int longB  = POMODORO_LONG_BREAK_MINUTES * 60;
+  const int cycles = POMODORO_CYCLES_BEFORE_LONG_BREAK;
+  // Total seconds in one complete round
+  const int roundSec = cycles * work + (cycles - 1) * shortB + longB;
+
+  int pos = elapsedSec % roundSec; // position within the current round
+
+  for (int c = 0; c < cycles; ++c) {
+    // Work block
+    if (pos < work) {
+      s.isWork      = true;
+      s.isLongBreak = false;
+      s.cycleNum    = c + 1;
+      s.remainSec   = work - pos;
+      s.phaseDurSec = work;
+      return s;
+    }
+    pos -= work;
+
+    // Short break (only between cycles, not after the last one)
+    if (c < cycles - 1) {
+      if (pos < shortB) {
+        s.isWork      = false;
+        s.isLongBreak = false;
+        s.cycleNum    = c + 1;
+        s.remainSec   = shortB - pos;
+        s.phaseDurSec = shortB;
+        return s;
+      }
+      pos -= shortB;
+    }
+  }
+
+  // Long break at the end of the round
+  s.isWork      = false;
+  s.isLongBreak = true;
+  s.cycleNum    = cycles;
+  s.remainSec   = longB - pos;
+  s.phaseDurSec = longB;
+  return s;
+}
+
+void drawPomodoroScreen(bool clockValid, const WeatherData &weather) {
+  logf("Render pomodoro screen. clockValid=%d", clockValid);
+  display.setRotation(1);
+  display.setFullWindow();
+
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    drawHeaderBase("Pomodoro");
+    display.setFont(&FreeMono9pt7b);
+    drawHeaderClock(clockValid);
+    drawWeatherCorner(weather);
+
+    // Tomato icon at top-right: small filled circle with a stem line
+    {
+      const int16_t icx = 284, icy = 9;
+      display.fillCircle(icx, icy, 6, GxEPD_BLACK);
+      display.drawLine(icx, icy - 6, icx, icy - 8, GxEPD_BLACK); // stem
+      display.drawLine(icx, icy - 8, icx + 3, icy - 9, GxEPD_BLACK); // leaf
+    }
+
+    if (!clockValid) {
+      display.setFont(&FreeMono9pt7b);
+      display.setCursor(8, 72);
+      display.print("No time sync");
+      display.setCursor(8, 90);
+      display.print("Cannot compute phase");
+    } else {
+      PomodoroState ps = computePomodoroState();
+
+      // ---- Large phase word (FOCUS / BREAK) ----
+      const char *phaseWord = ps.isWork ? "FOCUS" : "BREAK";
+      display.setFont(&FreeMonoBold18pt7b);
+      {
+        int16_t bx, by; uint16_t bw, bh;
+        display.getTextBounds(phaseWord, 0, 0, &bx, &by, &bw, &bh);
+        display.setCursor((296 - (int16_t)bw) / 2 - bx, 57);
+        display.print(phaseWord);
+      }
+
+      // ---- Countdown: "MM:SS left" ----
+      {
+        int remMin = ps.remainSec / 60;
+        int remSec = ps.remainSec % 60;
+        char remBuf[20];
+        snprintf(remBuf, sizeof(remBuf), "%02d:%02d left", remMin, remSec);
+        display.setFont(&FreeMono9pt7b);
+        int16_t rx, ry; uint16_t rw, rh;
+        display.getTextBounds(remBuf, 0, 0, &rx, &ry, &rw, &rh);
+        display.setCursor((296 - (int16_t)rw) / 2 - rx, 80);
+        display.print(remBuf);
+      }
+
+      // ---- Cycle progress dots ----
+      {
+        const int cyc  = POMODORO_CYCLES_BEFORE_LONG_BREAK;
+        const int dotR = 5;
+        const int gap  = 6; // pixels between dots
+        const int totalW = cyc * (dotR * 2) + (cyc - 1) * gap;
+        const int x0 = (296 - totalW) / 2;
+        for (int i = 0; i < cyc; ++i) {
+          int cx = x0 + i * (dotR * 2 + gap) + dotR;
+          int cy = 101;
+          // Dot filled = that focus session is complete
+          bool filled = ps.isLongBreak
+                     || (!ps.isWork && i < ps.cycleNum)
+                     || ( ps.isWork && i < ps.cycleNum - 1);
+          if (filled) display.fillCircle(cx, cy, dotR, GxEPD_BLACK);
+          else        display.drawCircle(cx, cy, dotR, GxEPD_BLACK);
+        }
+      }
+
+      // ---- Phase label line ----
+      {
+        char label[40];
+        const int cyc = POMODORO_CYCLES_BEFORE_LONG_BREAK;
+        if (ps.isWork)
+          snprintf(label, sizeof(label), "Focus %d of %d", ps.cycleNum, cyc);
+        else if (ps.isLongBreak)
+          snprintf(label, sizeof(label), "Long break - round complete!");
+        else
+          snprintf(label, sizeof(label), "Short break %d of %d",
+                   ps.cycleNum, cyc - 1);
+
+        display.setFont(&FreeMono9pt7b);
+        int16_t lx, ly; uint16_t lw, lh;
+        display.getTextBounds(label, 0, 0, &lx, &ly, &lw, &lh);
+        display.setCursor((296 - (int16_t)lw) / 2 - lx, 122);
+        display.print(label);
+      }
+    }
+  } while (display.nextPage());
+}
+
+// ---------------------------------------------------------------------------
 // Main cycle runner
 // ---------------------------------------------------------------------------
 
@@ -1739,6 +1908,9 @@ void runDashboardCycle(uint8_t screenId) {
       break;
     case SCREEN_THOUGHT:
       drawThoughtScreen(thought, clockValid, wifiConnected, cornerWeather);
+      break;
+    case SCREEN_POMODORO:
+      drawPomodoroScreen(clockValid, cornerWeather);
       break;
     case SCREEN_PRAYER:
       drawPrayerScreen(prayer, clockValid, wifiConnected, cornerWeather);

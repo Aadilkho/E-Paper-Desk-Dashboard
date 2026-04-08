@@ -278,23 +278,44 @@ const char *wakeupCauseStr(esp_sleep_wakeup_cause_t cause) {
   }
 }
 
-// Persist WiFi credentials to NVS so OTA-updated firmware (which has no
+// Persist multiple WiFi networks to NVS so OTA-updated firmware (which has no
 // compiled-in credentials) can still connect on subsequent boots.
-static void saveWiFiCredsToNVS(const char* ssid, const char* password) {
+static void saveWiFiNetworksToNVS(const String ssids[], const String passes[], int count) {
   Preferences prefs;
   prefs.begin("wifi", false);
-  prefs.putString("ssid", ssid);
-  prefs.putString("pass", password);
+  prefs.putInt("count", count);
+  for (int i = 0; i < count; i++) {
+    char kssid[8], kpass[8];
+    snprintf(kssid, sizeof(kssid), "ssid%d", i);
+    snprintf(kpass, sizeof(kpass), "pass%d", i);
+    prefs.putString(kssid, ssids[i].c_str());
+    prefs.putString(kpass, passes[i].c_str());
+  }
   prefs.end();
 }
 
-static bool loadWiFiCredsFromNVS(String& ssid, String& password) {
+static int loadWiFiNetworksFromNVS(String ssids[], String passes[], int maxCount) {
   Preferences prefs;
   prefs.begin("wifi", true);
-  ssid     = prefs.getString("ssid", "");
-  password = prefs.getString("pass", "");
+  int count = prefs.getInt("count", 0);
+  if (count == 0) {
+    // Legacy single-entry format written by older firmware
+    String ssid = prefs.getString("ssid", "");
+    String pass = prefs.getString("pass", "");
+    prefs.end();
+    if (ssid.length() > 0) { ssids[0] = ssid; passes[0] = pass; return 1; }
+    return 0;
+  }
+  count = min(count, maxCount);
+  for (int i = 0; i < count; i++) {
+    char kssid[8], kpass[8];
+    snprintf(kssid, sizeof(kssid), "ssid%d", i);
+    snprintf(kpass, sizeof(kpass), "pass%d", i);
+    ssids[i] = prefs.getString(kssid, "");
+    passes[i] = prefs.getString(kpass, "");
+  }
   prefs.end();
-  return ssid.length() > 0;
+  return count;
 }
 
 bool connectWiFi() {
@@ -304,44 +325,57 @@ bool connectWiFi() {
     return true;
   }
 
-  // Determine which credentials to use.
-  // If compiled-in creds are real, use them and persist to NVS for future
-  // OTA-updated firmware that won't have creds compiled in.
-  String ssid, password;
-  const bool compiledCreds = (strcmp(WIFI_SSID, "YOUR_WIFI_SSID") != 0);
-  if (compiledCreds) {
-    ssid     = WIFI_SSID;
-    password = WIFI_PASSWORD;
-    saveWiFiCredsToNVS(WIFI_SSID, WIFI_PASSWORD);
-    logf("Wi-Fi: using compiled-in creds, saved to NVS. SSID='%s'", ssid.c_str());
-  } else if (loadWiFiCredsFromNVS(ssid, password)) {
-    logf("Wi-Fi: using NVS creds. SSID='%s'", ssid.c_str());
-  } else {
-    logf("Wi-Fi: no credentials available (no compiled-in, no NVS). Skipping.");
-    return false;
-  }
+  static constexpr int MAX_NETS = 4;
+  String ssids[MAX_NETS], passes[MAX_NETS];
+  int netCount = 0;
 
-  logf("Wi-Fi connect start. SSID='%s'", ssid.c_str());
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid.c_str(), password.c_str());
-
-  const uint32_t started = millis();
-  uint32_t lastLogMs = 0;
-  while (WiFi.status() != WL_CONNECTED && millis() - started < WIFI_TIMEOUT_MS) {
-    if ((millis() - lastLogMs) > 1000) {
-      logf("Wi-Fi waiting... elapsed=%lu ms", (unsigned long)(millis() - started));
-      lastLogMs = millis();
+  // Collect compiled-in networks, filtering out placeholders/empty entries.
+  const char* compiledSsids[] = { WIFI_SSID, WIFI_SSID_FALLBACK_1, WIFI_SSID_FALLBACK_2 };
+  const char* compiledPass[]  = { WIFI_PASSWORD, WIFI_PASSWORD_FALLBACK_1, WIFI_PASSWORD_FALLBACK_2 };
+  for (int i = 0; i < 3 && netCount < MAX_NETS; i++) {
+    if (strlen(compiledSsids[i]) > 0 && strcmp(compiledSsids[i], "YOUR_WIFI_SSID") != 0) {
+      ssids[netCount]  = compiledSsids[i];
+      passes[netCount] = compiledPass[i];
+      netCount++;
     }
-    delay(250);
   }
-  const bool ok = WiFi.status() == WL_CONNECTED;
-  if (ok) {
-    logf("Wi-Fi connected. IP=%s RSSI=%d dBm",
-         WiFi.localIP().toString().c_str(), WiFi.RSSI());
+
+  if (netCount > 0) {
+    saveWiFiNetworksToNVS(ssids, passes, netCount);
+    logf("Wi-Fi: %d compiled-in network(s) saved to NVS.", netCount);
   } else {
-    logf("Wi-Fi connect timeout after %lu ms", (unsigned long)(millis() - started));
+    netCount = loadWiFiNetworksFromNVS(ssids, passes, MAX_NETS);
+    if (netCount == 0) {
+      logf("Wi-Fi: no credentials available (no compiled-in, no NVS). Skipping.");
+      return false;
+    }
+    logf("Wi-Fi: loaded %d network(s) from NVS.", netCount);
   }
-  return ok;
+
+  WiFi.mode(WIFI_STA);
+  for (int i = 0; i < netCount; i++) {
+    logf("Wi-Fi: trying SSID='%s' (%d/%d)", ssids[i].c_str(), i + 1, netCount);
+    WiFi.begin(ssids[i].c_str(), passes[i].c_str());
+    const uint32_t started = millis();
+    uint32_t lastLogMs = 0;
+    while (WiFi.status() != WL_CONNECTED && millis() - started < WIFI_TIMEOUT_MS) {
+      if ((millis() - lastLogMs) > 1000) {
+        logf("Wi-Fi waiting... elapsed=%lu ms", (unsigned long)(millis() - started));
+        lastLogMs = millis();
+      }
+      delay(250);
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+      logf("Wi-Fi connected. SSID='%s' IP=%s RSSI=%d dBm",
+           ssids[i].c_str(), WiFi.localIP().toString().c_str(), WiFi.RSSI());
+      return true;
+    }
+    logf("Wi-Fi timeout on SSID='%s' after %lu ms",
+         ssids[i].c_str(), (unsigned long)(millis() - started));
+    WiFi.disconnect(false, false);
+    delay(100);
+  }
+  return false;
 }
 
 void syncClock() {

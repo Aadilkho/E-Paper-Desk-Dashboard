@@ -15,6 +15,21 @@
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
 #endif
 
+// Optional additional networks tried in order if the primary fails.
+// Define in config_private.h; leave empty to disable.
+#ifndef WIFI_SSID_FALLBACK_1
+#define WIFI_SSID_FALLBACK_1 ""
+#endif
+#ifndef WIFI_PASSWORD_FALLBACK_1
+#define WIFI_PASSWORD_FALLBACK_1 ""
+#endif
+#ifndef WIFI_SSID_FALLBACK_2
+#define WIFI_SSID_FALLBACK_2 ""
+#endif
+#ifndef WIFI_PASSWORD_FALLBACK_2
+#define WIFI_PASSWORD_FALLBACK_2 ""
+#endif
+
 // South Africa Standard Time = UTC+2, no DST.
 #define UTC_OFFSET_SECONDS 7200
 

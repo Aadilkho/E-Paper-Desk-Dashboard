@@ -577,86 +577,109 @@ void normalizeThoughtText(const char *in, char *out, size_t outSize) {
   out[j] = '\0';
 }
 
-void setClassicalThought(ThoughtData &thought, bool clockValid) {
+void selectThought(ThoughtData &thought, bool /*wifiConnected*/, bool /*clockValid*/) {
   static const struct { const char *text; const char *source; } kQuotes[] = {
-    {"What you seek is seeking you.",                              "Rumi"},
-    {"The wound is the place where the light enters you.",         "Rumi"},
-    {"Let yourself be silently drawn by what you truly love.",     "Rumi"},
-    {"Raise your words, not your voice.",                          "Rumi"},
-    {"Love is the bridge between you and everything.",             "Rumi"},
-    {"Yesterday I was clever, so I wanted to change the world.",   "Rumi"},
-    {"Knowledge without action is wastefulness.",                  "Imam al-Ghazali"},
-    {"Action without knowledge is foolishness.",                   "Imam al-Ghazali"},
-    {"Patience turns hardship into wisdom.",                       "Imam al-Ghazali"},
+    // Prophet Muhammad (peace be upon him)
+    {"The strong person is not the one who wrestles others down. The strong person is the one who controls himself when angry.",
+                                                                    "Prophet Muhammad"},
+    {"Make things easy, do not make them difficult.",               "Prophet Muhammad"},
+    {"None of you truly believes until he loves for his brother what he loves for himself.",
+                                                                    "Prophet Muhammad"},
+    {"Allah does not look at your appearance or wealth, but at your hearts and actions.",
+                                                                    "Prophet Muhammad"},
+    {"The best of people are those who bring the most benefit to others.",
+                                                                    "Prophet Muhammad"},
+    {"Richness is not an abundance of wealth; it is an abundance of the soul.",
+                                                                    "Prophet Muhammad"},
+    {"He who does not thank people does not thank Allah.",          "Prophet Muhammad"},
+    {"A good word is a charity.",                                   "Prophet Muhammad"},
+    {"Seeking knowledge is an obligation upon every Muslim.",       "Prophet Muhammad"},
+    {"Actions are but by intentions.",                              "Prophet Muhammad"},
+    {"Modesty is part of faith.",                                   "Prophet Muhammad"},
+    {"Whoever believes in Allah and the Last Day, let him speak good or remain silent.",
+                                                                    "Prophet Muhammad"},
+    {"Smile at your brother, for that is charity.",                 "Prophet Muhammad"},
+    {"Be in this world as if you are a stranger or a traveller.",   "Prophet Muhammad"},
+    {"Whoever is not grateful to people is not grateful to Allah.", "Prophet Muhammad"},
+    {"The merciful are shown mercy by the Most Merciful. Be merciful to those on earth, and He will be merciful to you.",
+                                                                    "Prophet Muhammad"},
+    {"Feed the hungry, visit the sick, and free the captive.",      "Prophet Muhammad"},
+    {"The best among you are those who have the best manners and character.",
+                                                                    "Prophet Muhammad"},
+    // Ali ibn Abi Talib (RA)
+    {"The worth of a man is in his knowledge.",                     "Ali ibn Abi Talib"},
+    {"Do not feel lonely; the entire universe is within you.",      "Ali ibn Abi Talib"},
+    {"The tongue is like a lion. If you let it loose, it will wound someone.",
+                                                                    "Ali ibn Abi Talib"},
+    {"Opportunity is swift of flight but slow to return.",          "Ali ibn Abi Talib"},
+    {"He who has a thousand friends has not a friend to spare; he who has one enemy will meet him everywhere.",
+                                                                    "Ali ibn Abi Talib"},
+    {"Do not let your difficulties fill you with anxiety; after all, it is only in the darkest nights that stars shine most brilliantly.",
+                                                                    "Ali ibn Abi Talib"},
+    {"Patience is of two kinds: patience over what pains you, and patience against what you covet.",
+                                                                    "Ali ibn Abi Talib"},
+    // Umar ibn al-Khattab (RA)
+    {"Hold yourself accountable before you are held accountable.",  "Umar ibn al-Khattab"},
+    {"Patience is the healthiest ingredient of our life.",          "Umar ibn al-Khattab"},
+    {"The greatest fool is the one who is deceived by this worldly life.",
+                                                                    "Umar ibn al-Khattab"},
+    // Abu Bakr al-Siddiq (RA)
+    {"Without knowledge, action is useless and knowledge without action is futile.",
+                                                                    "Abu Bakr al-Siddiq"},
+    {"Do not look down upon any Muslim, for even the most inferior believer is great in the eyes of Allah.",
+                                                                    "Abu Bakr al-Siddiq"},
+    // Imam al-Ghazali
+    {"Knowledge without action is wastefulness, and action without knowledge is foolishness.",
+                                                                    "Imam al-Ghazali"},
+    {"If you have not been a good person in the past, begin to be one now.",
+                                                                    "Imam al-Ghazali"},
+    {"The heart in its journey to Allah is like a bird: love is its head, and fear and hope are its two wings.",
+                                                                    "Imam al-Ghazali"},
+    {"Patience is the provision of the traveller on the road to Allah.",
+                                                                    "Imam al-Ghazali"},
+    {"Whoever knows himself knows his Lord.",                       "Imam al-Ghazali"},
+    {"The tongue is a dangerous weapon; keep it behind the fortress of silence unless truth calls it out.",
+                                                                    "Imam al-Ghazali"},
+    // Ibn Qayyim al-Jawziyyah
+    {"The heart will rest and feel relief if it is settled with Allah.",
+                                                                    "Ibn al-Qayyim"},
+    {"If you want to focus more on Allah in your prayers, focus more on Him outside of your prayers.",
+                                                                    "Ibn al-Qayyim"},
+    {"Sins cause harm and repentance removes harm.",                "Ibn al-Qayyim"},
+    {"Letting go of the dunya in your heart does not mean you own nothing; it means nothing owns you.",
+                                                                    "Ibn al-Qayyim"},
+    {"Whenever Allah afflicts a believer with a trial, He grants him the strength to bear it.",
+                                                                    "Ibn al-Qayyim"},
+    // Rumi
+    {"What you seek is seeking you.",                               "Rumi"},
+    {"The wound is the place where the light enters you.",          "Rumi"},
+    {"Let yourself be silently drawn by what you truly love.",      "Rumi"},
+    {"Raise your words, not your voice. It is rain that grows flowers, not thunder.",
+                                                                    "Rumi"},
+    {"Out beyond ideas of wrongdoing and rightdoing, there is a field. I will meet you there.",
+                                                                    "Rumi"},
+    {"Yesterday I was clever, so I wanted to change the world. Today I am wise, so I am changing myself.",
+                                                                    "Rumi"},
+    {"Sell your cleverness and buy bewilderment.",                  "Rumi"},
+    // Ibn Taymiyyah
+    {"The greatest punishment is the hardening of the heart and being far from Allah.",
+                                                                    "Ibn Taymiyyah"},
+    {"Happiness and success lie in following the truth, not in following desires.",
+                                                                    "Ibn Taymiyyah"},
+    // Imam al-Shafi'i
+    {"Knowledge is not what is memorised; knowledge is what benefits.",
+                                                                    "Imam al-Shafi'i"},
+    {"Tell me your company and I will tell you who you are.",       "Imam al-Shafi'i"},
   };
   constexpr size_t kCount = sizeof(kQuotes) / sizeof(kQuotes[0]);
 
-  uint32_t seed = bootCount;
-  if (clockValid) { time_t now; time(&now); seed += (uint32_t)(now / 3600); }
-  const size_t idx = seed % kCount;
+  const size_t idx = (size_t)(esp_random() % (uint32_t)kCount);
   strncpy(thought.text,   kQuotes[idx].text,   sizeof(thought.text)   - 1);
   strncpy(thought.source, kQuotes[idx].source, sizeof(thought.source) - 1);
   thought.text[sizeof(thought.text)-1]     = '\0';
   thought.source[sizeof(thought.source)-1] = '\0';
   thought.valid    = true;
   thought.error[0] = '\0';
-}
-
-bool fetchShowerThought(ThoughtData &thought) {
-  memset(&thought, 0, sizeof(thought));
-  const String url = "https://www.reddit.com/r/Showerthoughts/top.json?t=day&limit=25";
-
-  String payload;
-  int code = 0;
-  if (!httpGetRetry("Thought[Reddit]", url, payload, code)) {
-    snprintf(thought.error, sizeof(thought.error), "HTTP %d", code);
-    return false;
-  }
-
-  JsonDocument doc;
-  if (deserializeJson(doc, payload)) {
-    strncpy(thought.error, "JSON parse error", sizeof(thought.error)-1);
-    return false;
-  }
-
-  JsonArray children = doc["data"]["children"];
-  if (children.isNull() || children.size() == 0) {
-    strncpy(thought.error, "no posts", sizeof(thought.error)-1);
-    return false;
-  }
-
-  for (JsonObject child : children) {
-    JsonObject post = child["data"];
-    if (post.isNull()) continue;
-    if ((post["stickied"] | false) || (post["over_18"] | false)) continue;
-    const char *title = post["title"] | "";
-    if (title[0] == '\0') continue;
-    normalizeThoughtText(title, thought.text, sizeof(thought.text));
-    if (strlen(thought.text) < 16) continue;
-    strncpy(thought.source, "r/Showerthoughts", sizeof(thought.source)-1);
-    thought.source[sizeof(thought.source)-1] = '\0';
-    thought.valid    = true;
-    thought.error[0] = '\0';
-    return true;
-  }
-  strncpy(thought.error, "no suitable post", sizeof(thought.error)-1);
-  return false;
-}
-
-void selectThought(ThoughtData &thought, bool wifiConnected, bool clockValid) {
-  ThoughtData classical = {false,"","",""};
-  setClassicalThought(classical, clockValid);
-
-  if (!wifiConnected) { thought = classical; return; }
-
-  ThoughtData reddit = {false,"","",""};
-  const bool hasReddit = fetchShowerThought(reddit);
-  if (!hasReddit) {
-    thought = classical;
-    strncpy(thought.error, reddit.error, sizeof(thought.error)-1);
-    return;
-  }
-  thought = ((esp_random() & 1U) == 0U) ? reddit : classical;
 }
 
 // ---------------------------------------------------------------------------
@@ -1333,7 +1356,7 @@ void drawThoughtScreen(const ThoughtData &thought, bool clockValid,
   display.firstPage();
   do {
     display.fillScreen(GxEPD_WHITE);
-    drawHeaderBase("Shower Thoughts");
+    drawHeaderBase("Islamic Wisdom");
     // Thought bubble icon
     const int16_t ix=273, iy=2;
     display.drawRoundRect(ix+1, iy+2, 20, 13, 2, GxEPD_BLACK);

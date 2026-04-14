@@ -90,20 +90,6 @@
 #define NEWS_SUBREDDIT   "worldnews"
 
 // ---------------------------------------------------------------------------
-// Pomodoro timer configuration
-// Work starts at POMODORO_START_HOUR each day and runs continuous rounds.
-// One round = CYCLES x work + (CYCLES-1) x short break + 1 long break.
-// Default: 25/5/30 x 4 = 145-minute round.
-// ---------------------------------------------------------------------------
-#define ENABLE_POMODORO_SCREEN            true
-#define POMODORO_SCREEN_INTERVAL_SEC      60
-#define POMODORO_START_HOUR               9    // 09:00 — when the work day begins
-#define POMODORO_WORK_MINUTES             45
-#define POMODORO_SHORT_BREAK_MINUTES      10
-#define POMODORO_LONG_BREAK_MINUTES       30
-#define POMODORO_CYCLES_BEFORE_LONG_BREAK 4
-
-// ---------------------------------------------------------------------------
 // OTA firmware update configuration
 //
 // The device checks raw.githubusercontent.com/{OWNER}/{REPO}/{BRANCH}/version.json
